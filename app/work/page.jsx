@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
@@ -8,10 +8,11 @@ import Link from "next/link";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 
-import { BsEye, BsCode, BsCalendar3 } from "react-icons/bs";
+import { BsEye, BsCode, BsCalendar3, BsGithub, BsArrowUpRight } from "react-icons/bs";
 import { FaWordpress, FaLaravel, FaCss3Alt, FaServer, FaCloud, FaNetworkWired } from "react-icons/fa";
 import { SiElementor, SiMysql, SiBootstrap, SiJquery } from "react-icons/si";
 
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import Section from "@/components/shared/Section";
 import SectionHeading from "@/components/shared/SectionHeading";
@@ -77,7 +78,7 @@ const projects = [
   },
   {
     num: "03",
-    category: "Wordpress Redesign",
+    category: "WordPress Redesign",
     title: "Blog Redesign",
     description:
       "A complete redesign of the website`s blog section, including the Header, Footer, Blog Listing Page, and Single Blog Page. The goal was to deliver a modern, responsive, and user-friendly interface that improves readability, navigation, and overall engagement.",
@@ -102,7 +103,7 @@ const projects = [
   },
   {
     num: "04",
-    category: "Wordpress Redesign",
+    category: "WordPress Redesign",
     title: "Home Page & Blog Redesign",
     description:
       "A complete redesign of the website`s homepage and blog section, including the Header, Footer, Blog Listing Page, and Single Blog Page. The goal was to deliver a modern, responsive, and user-friendly interface that improves readability, navigation, and overall engagement.",
@@ -207,12 +208,40 @@ const projects = [
   },
 ];
 
+// Filter tabs, derived from the project categories (plus a leading "All").
+const categories = ["All", ...Array.from(new Set(projects.map((p) => p.category)))];
+
 const Work = () => {
-  const [project, setProject] = useState(projects[0]);
+  const [activeCategory, setActiveCategory] = useState("All");
+  const [activeIndex, setActiveIndex] = useState(0);
+  const swiperRef = useRef(null);
+
+  // The subset of projects currently shown in the slider.
+  const filtered = useMemo(
+    () =>
+      activeCategory === "All"
+        ? projects
+        : projects.filter((p) => p.category === activeCategory),
+    [activeCategory]
+  );
+
+  // Guard against a stale index after the filtered set shrinks.
+  const project = filtered[activeIndex] ?? filtered[0];
 
   const handleSlideChange = (swiper) => {
     // realIndex accounts for Swiper's loop-mode clones.
-    setProject(projects[swiper.realIndex]);
+    setActiveIndex(swiper.realIndex);
+  };
+
+  const handleCategory = (category) => {
+    setActiveCategory(category);
+    setActiveIndex(0);
+    // Swiper is re-keyed on category change, so it remounts at slide 0.
+  };
+
+  const goToSlide = (index) => {
+    setActiveIndex(index);
+    swiperRef.current?.slideToLoop(index);
   };
 
   return (
@@ -242,6 +271,29 @@ const Work = () => {
 
       {/* ===================== PROJECT SHOWCASE ===================== */}
       <Section>
+        {/* Category filter */}
+        <Reveal className="mb-12 flex flex-wrap justify-center gap-3">
+          {categories.map((category) => {
+            const isActive = category === activeCategory;
+            return (
+              <button
+                key={category}
+                type="button"
+                onClick={() => handleCategory(category)}
+                aria-pressed={isActive}
+                className={cn(
+                  "rounded-full border px-4 py-2 text-sm font-medium transition-all duration-300",
+                  isActive
+                    ? "border-accent bg-accent text-primary shadow-glow"
+                    : "border-line bg-white/[0.03] text-white/60 hover:border-accent/50 hover:text-white"
+                )}
+              >
+                {category}
+              </button>
+            );
+          })}
+        </Reveal>
+
         <div className="flex flex-col gap-12 xl:flex-row xl:gap-16">
           {/* Details */}
           <motion.div
@@ -305,19 +357,44 @@ const Work = () => {
                 ))}
               </div>
             </div>
+
+            {/* Links — only render when a URL is provided */}
+            {(project.live || project.github) && (
+              <div className="flex flex-wrap gap-4">
+                {project.live && (
+                  <Link href={project.live} target="_blank" rel="noopener noreferrer">
+                    <Button>
+                      View Live
+                      <BsArrowUpRight />
+                    </Button>
+                  </Link>
+                )}
+                {project.github && (
+                  <Link href={project.github} target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline">
+                      <BsGithub />
+                      Source Code
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            )}
           </motion.div>
 
           {/* Slider */}
           <div className="order-1 w-full xl:order-none xl:w-1/2">
             <div className="relative">
               <Swiper
+                // Re-key on category so the slider remounts at slide 0 for the new set.
+                key={activeCategory}
                 spaceBetween={30}
                 slidesPerView={1}
-                loop
+                loop={filtered.length > 1}
+                onSwiper={(swiper) => (swiperRef.current = swiper)}
                 onSlideChange={handleSlideChange}
-                className="h-[360px] overflow-hidden rounded-2xl sm:h-[460px] xl:h-[600px]"
+                className="aspect-[585/460] w-full overflow-hidden rounded-2xl"
               >
-                {projects.map((item) => (
+                {filtered.map((item) => (
                   <SwiperSlide key={item.num}>
                     <div className="group relative h-full w-full overflow-hidden rounded-2xl border border-line bg-surface">
                       <Image
@@ -325,7 +402,7 @@ const Work = () => {
                         alt={`${item.title} - ${item.category}`}
                         fill
                         sizes="(max-width: 1280px) 100vw, 50vw"
-                        className="object-cover transition-transform duration-500 group-hover:scale-105"
+                        className="object-contain transition-transform duration-500 group-hover:scale-105"
                       />
                       {/* Gradient overlay + caption */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
@@ -344,20 +421,55 @@ const Work = () => {
                   </SwiperSlide>
                 ))}
 
-                <WorkSliderButtons
-                  containerStyles="flex gap-3 absolute right-5 bottom-5 z-20"
-                  btnStyles="flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-sm transition-all hover:border-accent hover:bg-accent hover:text-primary"
-                  iconsStyles="text-lg"
-                />
+                {filtered.length > 1 && (
+                  <WorkSliderButtons
+                    containerStyles="flex gap-3 absolute right-5 bottom-5 z-20"
+                    btnStyles="flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-sm transition-all hover:border-accent hover:bg-accent hover:text-primary"
+                    iconsStyles="text-lg"
+                  />
+                )}
               </Swiper>
 
-              {/* Counter */}
+              {/* Counter — position within the filtered set */}
               <div className="absolute right-5 top-5 z-20 rounded-full bg-black/70 px-4 py-2 backdrop-blur-sm">
                 <span className="font-mono text-sm font-medium text-white">
-                  {project.num} / {projects.length.toString().padStart(2, "0")}
+                  {(activeIndex + 1).toString().padStart(2, "0")} /{" "}
+                  {filtered.length.toString().padStart(2, "0")}
                 </span>
               </div>
             </div>
+
+            {/* Thumbnail strip — jump directly to any project */}
+            {filtered.length > 1 && (
+              <div className="mt-5 flex flex-wrap gap-3">
+                {filtered.map((item, i) => {
+                  const isActive = i === activeIndex;
+                  return (
+                    <button
+                      key={item.num}
+                      type="button"
+                      onClick={() => goToSlide(i)}
+                      aria-label={`View ${item.title}`}
+                      aria-current={isActive}
+                      className={cn(
+                        "relative h-14 w-20 flex-shrink-0 overflow-hidden rounded-lg border transition-all duration-300 sm:h-16 sm:w-24",
+                        isActive
+                          ? "border-accent ring-2 ring-accent/50"
+                          : "border-line opacity-60 hover:opacity-100"
+                      )}
+                    >
+                      <Image
+                        src={item.image}
+                        alt=""
+                        fill
+                        sizes="96px"
+                        className="object-cover"
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </Section>
