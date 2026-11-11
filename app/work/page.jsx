@@ -1,25 +1,28 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 
-import { BsEye, BsCode, BsCalendar3 } from "react-icons/bs";
-import { FaWordpress, FaLaravel, FaCss3Alt, FaServer, FaCloud, FaNetworkWired } from "react-icons/fa";
+import { BsEye, BsCode, BsCalendar3, BsGithub, BsArrowUpRight, BsChevronDown } from "react-icons/bs";
+import { FaWordpress, FaLaravel, FaCss3Alt } from "react-icons/fa";
 import { SiElementor, SiMysql, SiBootstrap, SiJquery } from "react-icons/si";
 
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import Section from "@/components/shared/Section";
 import SectionHeading from "@/components/shared/SectionHeading";
 import Reveal from "@/components/shared/Reveal";
 import CTA from "@/components/shared/CTA";
 import WorkSliderButtons from "@/components/WorkSliderButtons";
+import { caseStudies, workStats } from "@/lib/caseStudies";
+import { staggerContainer, staggerItem } from "@/lib/motion";
 
-// ---- Content (unchanged) ----------------------------------------------------
+// ---- Earlier freelance projects ---------------------------------------------
 const projects = [
   {
     num: "01",
@@ -77,10 +80,10 @@ const projects = [
   },
   {
     num: "03",
-    category: "Wordpress Redesign",
+    category: "WordPress Redesign",
     title: "Blog Redesign",
     description:
-      "A complete redesign of the website`s blog section, including the Header, Footer, Blog Listing Page, and Single Blog Page. The goal was to deliver a modern, responsive, and user-friendly interface that improves readability, navigation, and overall engagement.",
+      "A complete redesign of the website's blog section, including the Header, Footer, Blog Listing Page, and Single Blog Page. The goal was to deliver a modern, responsive, and user-friendly interface that improves readability, navigation, and overall engagement.",
     features: [
       "Custom WordPress theme customization",
       "Redesigned header and footer for better branding",
@@ -102,10 +105,10 @@ const projects = [
   },
   {
     num: "04",
-    category: "Wordpress Redesign",
+    category: "WordPress Redesign",
     title: "Home Page & Blog Redesign",
     description:
-      "A complete redesign of the website`s homepage and blog section, including the Header, Footer, Blog Listing Page, and Single Blog Page. The goal was to deliver a modern, responsive, and user-friendly interface that improves readability, navigation, and overall engagement.",
+      "A complete redesign of the website's homepage and blog section, including the Header, Footer, Blog Listing Page, and Single Blog Page. The goal was to deliver a modern, responsive, and user-friendly interface that improves readability, navigation, and overall engagement.",
     features: [
       "Custom WordPress theme customization",
       "Redesigned header and footer for better branding",
@@ -136,7 +139,7 @@ const projects = [
       "Responsive, pixel-perfect implementation from Figma",
       "Develop Homepage",
       "Develop Blog Page",
-      "Develop Sinle Post Page",
+      "Develop Single Post Page",
       "Custom animations and interactive elements",
       "Cross-browser and mobile compatibility",
     ],
@@ -149,7 +152,7 @@ const projects = [
     image: "/assets/work/5.png",
     live: "",
     github: "",
-    duration: "4days",
+    duration: "4 days",
     client: "Upwork Client",
     year: "2025",
   },
@@ -179,40 +182,47 @@ const projects = [
     client: "Upwork Client",
     year: "2025",
   },
-  {
-    num: "07",
-    category: "Hosting Migration & DNS",
-    title: "WP Engine to Kinsta Migration with Bunny CDN",
-    description:
-      "Migrated Non WooCommerce WordPress sites and WooCommerce WordPress sites from WP Engine to Kinsta with zero data loss and minimal downtime, then configured Bunny.net CDN for faster global delivery and moved the DNS records from CrazyDomains to Bunny.",
-    features: [
-      "Full site and database migration from WP Engine to Kinsta",
-      "Environment configuration and post-migration testing",
-      "Bunny.net CDN setup for global content delivery",
-      "DNS migration from CrazyDomains to Bunny",
-      "Nameserver, SSL, and propagation verification",
-    ],
-    stack: [
-      { name: "WordPress", icon: <FaWordpress /> },
-      { name: "Kinsta", icon: <FaServer /> },
-      { name: "Bunny CDN", icon: <FaCloud /> },
-      { name: "DNS", icon: <FaNetworkWired /> },
-    ],
-    image: "/assets/work/site-migration_1.png",
-    live: "",
-    github: "",
-    duration: "1 week",
-    client: "Upwork Client",
-    year: "2025",
-  },
 ];
 
+// Filter tabs, derived from the categories (plus a leading "All").
+const caseCategories = ["All", ...Array.from(new Set(caseStudies.map((c) => c.category)))];
+const categories = ["All", ...Array.from(new Set(projects.map((p) => p.category)))];
+
 const Work = () => {
-  const [project, setProject] = useState(projects[0]);
+  const [activeCase, setActiveCase] = useState("All");
+  const visibleCases =
+    activeCase === "All" ? caseStudies : caseStudies.filter((c) => c.category === activeCase);
+
+  const [activeCategory, setActiveCategory] = useState("All");
+  const [activeIndex, setActiveIndex] = useState(0);
+  const swiperRef = useRef(null);
+
+  // The subset of projects currently shown in the slider.
+  const filtered = useMemo(
+    () =>
+      activeCategory === "All"
+        ? projects
+        : projects.filter((p) => p.category === activeCategory),
+    [activeCategory]
+  );
+
+  // Guard against a stale index after the filtered set shrinks.
+  const project = filtered[activeIndex] ?? filtered[0];
 
   const handleSlideChange = (swiper) => {
     // realIndex accounts for Swiper's loop-mode clones.
-    setProject(projects[swiper.realIndex]);
+    setActiveIndex(swiper.realIndex);
+  };
+
+  const handleCategory = (category) => {
+    setActiveCategory(category);
+    setActiveIndex(0);
+    // Swiper is re-keyed on category change, so it remounts at slide 0.
+  };
+
+  const goToSlide = (index) => {
+    setActiveIndex(index);
+    swiperRef.current?.slideToLoop(index);
   };
 
   return (
@@ -220,28 +230,70 @@ const Work = () => {
       {/* ===================== HERO ===================== */}
       <Section variant="accent" className="section-sm pt-28">
         <SectionHeading
-          eyebrow="Selected projects"
+          eyebrow="Selected work"
           title={
             <>
-              My <span className="text-accent">Portfolio</span>
+              Stores that keep <span className="text-accent">selling</span>
             </>
           }
-          subtitle="Explore my latest projects showcasing expertise in WordPress development, full-stack applications, and modern web technologies."
+          subtitle="Migrations, redesigns, security and day-to-day care for live WooCommerce stores, delivered as a developer at Blaze Commerce, plus earlier freelance builds."
         />
-        <Reveal delay={0.1} className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-          <Link href="/contact">
-            <Button size="lg">Start a Project</Button>
-          </Link>
-          <Link href="/services">
-            <Button variant="outline" size="lg">
-              View Services
-            </Button>
-          </Link>
-        </Reveal>
+        <motion.ul
+          variants={staggerContainer}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.3 }}
+          className="mx-auto mt-12 grid max-w-4xl grid-cols-2 gap-4 lg:grid-cols-4"
+        >
+          {workStats.map((stat) => (
+            <motion.li key={stat.label} variants={staggerItem} className="card p-5 text-center">
+              <p className="font-display text-3xl font-semibold text-white md:text-4xl">
+                {stat.value}
+              </p>
+              <p className="mt-1 text-sm leading-snug text-white/60">{stat.label}</p>
+            </motion.li>
+          ))}
+        </motion.ul>
       </Section>
 
-      {/* ===================== PROJECT SHOWCASE ===================== */}
+      {/* ===================== CASE STUDIES ===================== */}
       <Section>
+        <SectionHeading
+          eyebrow="Blaze Commerce · 2025–2026"
+          title="Client case studies"
+          subtitle="Real projects on live stores. Clients are kept anonymous; the numbers are real."
+          className="mb-10"
+        />
+        <FilterChips
+          options={caseCategories}
+          active={activeCase}
+          onChange={setActiveCase}
+          className="mb-12"
+        />
+        <motion.div layout className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
+          <AnimatePresence mode="popLayout">
+            {visibleCases.map((study) => (
+              <CaseStudyCard key={study.id} study={study} />
+            ))}
+          </AnimatePresence>
+        </motion.div>
+      </Section>
+
+      {/* ===================== EARLIER WORK ===================== */}
+      <Section variant="surface">
+        <SectionHeading
+          eyebrow="Freelance · 2022–2025"
+          title="Earlier projects"
+          subtitle="WordPress builds and redesigns from Figma, plus a full-stack Laravel app."
+          className="mb-10"
+        />
+        <FilterChips
+          options={categories}
+          active={activeCategory}
+          onChange={handleCategory}
+          className="mb-12"
+        />
+
         <div className="flex flex-col gap-12 xl:flex-row xl:gap-16">
           {/* Details */}
           <motion.div
@@ -305,19 +357,44 @@ const Work = () => {
                 ))}
               </div>
             </div>
+
+            {/* Links — only render when a URL is provided */}
+            {(project.live || project.github) && (
+              <div className="flex flex-wrap gap-4">
+                {project.live && (
+                  <Link href={project.live} target="_blank" rel="noopener noreferrer">
+                    <Button>
+                      View Live
+                      <BsArrowUpRight />
+                    </Button>
+                  </Link>
+                )}
+                {project.github && (
+                  <Link href={project.github} target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline">
+                      <BsGithub />
+                      Source Code
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            )}
           </motion.div>
 
           {/* Slider */}
           <div className="order-1 w-full xl:order-none xl:w-1/2">
             <div className="relative">
               <Swiper
+                // Re-key on category so the slider remounts at slide 0 for the new set.
+                key={activeCategory}
                 spaceBetween={30}
                 slidesPerView={1}
-                loop
+                loop={filtered.length > 1}
+                onSwiper={(swiper) => (swiperRef.current = swiper)}
                 onSlideChange={handleSlideChange}
-                className="h-[360px] overflow-hidden rounded-2xl sm:h-[460px] xl:h-[600px]"
+                className="aspect-[585/460] w-full overflow-hidden rounded-2xl"
               >
-                {projects.map((item) => (
+                {filtered.map((item) => (
                   <SwiperSlide key={item.num}>
                     <div className="group relative h-full w-full overflow-hidden rounded-2xl border border-line bg-surface">
                       <Image
@@ -325,7 +402,7 @@ const Work = () => {
                         alt={`${item.title} - ${item.category}`}
                         fill
                         sizes="(max-width: 1280px) 100vw, 50vw"
-                        className="object-cover transition-transform duration-500 group-hover:scale-105"
+                        className="object-contain transition-transform duration-500 group-hover:scale-105"
                       />
                       {/* Gradient overlay + caption */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
@@ -344,28 +421,63 @@ const Work = () => {
                   </SwiperSlide>
                 ))}
 
-                <WorkSliderButtons
-                  containerStyles="flex gap-3 absolute right-5 bottom-5 z-20"
-                  btnStyles="flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-sm transition-all hover:border-accent hover:bg-accent hover:text-primary"
-                  iconsStyles="text-lg"
-                />
+                {filtered.length > 1 && (
+                  <WorkSliderButtons
+                    containerStyles="flex gap-3 absolute right-5 bottom-5 z-20"
+                    btnStyles="flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-sm transition-all hover:border-accent hover:bg-accent hover:text-primary"
+                    iconsStyles="text-lg"
+                  />
+                )}
               </Swiper>
 
-              {/* Counter */}
+              {/* Counter — position within the filtered set */}
               <div className="absolute right-5 top-5 z-20 rounded-full bg-black/70 px-4 py-2 backdrop-blur-sm">
                 <span className="font-mono text-sm font-medium text-white">
-                  {project.num} / {projects.length.toString().padStart(2, "0")}
+                  {(activeIndex + 1).toString().padStart(2, "0")} /{" "}
+                  {filtered.length.toString().padStart(2, "0")}
                 </span>
               </div>
             </div>
+
+            {/* Thumbnail strip — jump directly to any project */}
+            {filtered.length > 1 && (
+              <div className="mt-5 flex flex-wrap gap-3">
+                {filtered.map((item, i) => {
+                  const isActive = i === activeIndex;
+                  return (
+                    <button
+                      key={item.num}
+                      type="button"
+                      onClick={() => goToSlide(i)}
+                      aria-label={`View ${item.title}`}
+                      aria-current={isActive}
+                      className={cn(
+                        "relative h-14 w-20 flex-shrink-0 overflow-hidden rounded-lg border transition-all duration-300 sm:h-16 sm:w-24",
+                        isActive
+                          ? "border-accent ring-2 ring-accent/50"
+                          : "border-line opacity-60 hover:opacity-100"
+                      )}
+                    >
+                      <Image
+                        src={item.image}
+                        alt=""
+                        fill
+                        sizes="96px"
+                        className="object-cover"
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </Section>
 
       {/* ===================== CTA ===================== */}
       <CTA
-        title="Ready to Start Your Project?"
-        description="Let`s collaborate to bring your vision to life. I`m here to help you create exceptional web solutions that drive results."
+        title="Need a hand with your store?"
+        description="Migrating hosts, redesigning a checkout, or cleaning up after a hack: I've done it on live stores, and I can do it on yours."
         primary={{ label: "Get Started", href: "/contact" }}
         secondary={{ label: "View Services", href: "/services" }}
       />
@@ -373,4 +485,117 @@ const Work = () => {
   );
 };
 
+// ---- FilterChips ------------------------------------------------------------
+const FilterChips = ({ options, active, onChange, className }) => (
+  <Reveal className={cn("flex flex-wrap justify-center gap-3", className)}>
+    {options.map((option) => {
+      const isActive = option === active;
+      return (
+        <button
+          key={option}
+          type="button"
+          onClick={() => onChange(option)}
+          aria-pressed={isActive}
+          className={cn(
+            "rounded-full border px-4 py-2 text-sm font-medium transition-all duration-300",
+            isActive
+              ? "border-accent bg-accent text-primary shadow-glow"
+              : "border-line bg-white/[0.03] text-white/60 hover:border-accent/50 hover:text-white"
+          )}
+        >
+          {option}
+        </button>
+      );
+    })}
+  </Reveal>
+);
+
+// ---- CaseStudyCard ----------------------------------------------------------
+const PREVIEW_COUNT = 3;
+
+const CaseStudyCard = ({ study }) => {
+  const [expanded, setExpanded] = useState(false);
+  const shown = expanded ? study.highlights : study.highlights.slice(0, PREVIEW_COUNT);
+  const hiddenCount = study.highlights.length - PREVIEW_COUNT;
+
+  return (
+    <motion.article
+      id={study.id}
+      layout
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.97 }}
+      transition={{ duration: 0.35 }}
+      className="card card-interactive group flex scroll-mt-28 flex-col overflow-hidden"
+    >
+      {/* Cover: headline metric + icon (no screenshots, so clients stay anonymous) */}
+      <div className="relative flex items-end justify-between gap-6 overflow-hidden border-b border-line bg-gradient-to-br from-accent/15 via-surface-2 to-surface p-6 md:p-8">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-grid [background-size:32px_32px] opacity-40 [mask-image:linear-gradient(to_bottom_left,black,transparent_70%)]"
+        />
+        <div className="relative">
+          <p className="font-display text-5xl font-semibold leading-none text-white md:text-6xl">
+            {study.metric.value}
+          </p>
+          <p className="mt-2 max-w-[16rem] text-sm text-white/60">{study.metric.label}</p>
+        </div>
+        <span className="relative flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-accent/15 text-2xl text-accent transition-all duration-300 group-hover:bg-accent group-hover:text-primary">
+          {study.icon}
+        </span>
+      </div>
+
+      <div className="flex flex-1 flex-col gap-5 p-6 md:p-8">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="tag-accent">{study.category}</span>
+          <span className="font-mono text-xs uppercase tracking-wider text-white/40">
+            {study.year}
+          </span>
+        </div>
+
+        <div className="space-y-2">
+          <p className="font-mono text-xs uppercase tracking-wider text-accent-soft">
+            {study.client}
+          </p>
+          <h3 className="h3 text-white">{study.title}</h3>
+        </div>
+
+        <p className="leading-relaxed text-white/60">{study.summary}</p>
+
+        <ul className="space-y-2">
+          {shown.map((point) => (
+            <li key={point} className="flex items-start gap-3 text-sm text-white/70">
+              <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-accent" />
+              {point}
+            </li>
+          ))}
+        </ul>
+
+        {hiddenCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            aria-expanded={expanded}
+            className="inline-flex w-fit items-center gap-2 text-sm font-medium text-accent transition-colors hover:text-accent-soft"
+          >
+            {expanded ? "Show less" : `Show ${hiddenCount} more`}
+            <BsChevronDown
+              className={cn("transition-transform duration-300", expanded && "rotate-180")}
+            />
+          </button>
+        )}
+
+        <div className="mt-auto flex flex-wrap gap-2 border-t border-line pt-5">
+          {study.stack.map((tech) => (
+            <span key={tech} className="tag">
+              {tech}
+            </span>
+          ))}
+        </div>
+      </div>
+    </motion.article>
+  );
+};
+
 export default Work;
+
