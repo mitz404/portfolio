@@ -1,4 +1,4 @@
-import { Inter, Space_Grotesk, JetBrains_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
 // components
@@ -9,26 +9,29 @@ import { Noise } from "@/components/shared/Decorations";
 // import PageTransition from "@/components/PageTransition";
 // import StairTransition from "@/components/StairTransition";
 
-/* Font pairing (loaded via next/font for zero layout shift + self-hosting):
+/* Font pairing (self-hosted variable fonts from @fontsource-variable, loaded via
+   next/font/local so the build never fetches from Google Fonts — that fetch
+   broke Vercel builds when Google returned font URLs next/font couldn't parse):
    - Inter           → body text (high readability for long paragraphs)
    - Space Grotesk   → headings (modern, geometric, distinctive)
    - JetBrains Mono  → eyebrows, tags, numbers (developer accent) */
-const inter = Inter({
-  subsets: ["latin"],
+const inter = localFont({
+  src: "../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2",
+  weight: "100 900",
   variable: "--font-inter",
   display: "swap",
 });
 
-const spaceGrotesk = Space_Grotesk({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+const spaceGrotesk = localFont({
+  src: "../node_modules/@fontsource-variable/space-grotesk/files/space-grotesk-latin-wght-normal.woff2",
+  weight: "300 700",
   variable: "--font-space-grotesk",
   display: "swap",
 });
 
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
+const jetbrainsMono = localFont({
+  src: "../node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2",
+  weight: "100 800",
   variable: "--font-jetbrains-mono",
   display: "swap",
 });
